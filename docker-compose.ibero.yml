@@ -1,7 +1,8 @@
 # Producción (Ibero): Kan construido desde ESTE fork + Postgres + RustFS (S3).
 #
 # Todo escucha solo en 127.0.0.1; el Nginx del servidor publica los dominios
-# con HTTPS (ver deploy/nginx/kan.conf.example). Uso:
+# con HTTPS (ver deploy/nginx/kan.conf.example). Sin dominio todavía, se puede
+# exponer por IP:puerto con KAN_BIND=0.0.0.0 (ver .env.production.example). Uso:
 #
 #   cp .env.production.example .env   # y llenar los valores
 #   docker compose -f docker-compose.ibero.yml up -d --build
@@ -37,7 +38,7 @@ services:
     environment:
       - POSTGRES_URL=postgresql://kan:${POSTGRES_PASSWORD}@postgres:5432/kan_db
     ports:
-      - "127.0.0.1:${KAN_WEB_PORT:-3100}:3000"
+      - "${KAN_BIND:-127.0.0.1}:${KAN_WEB_PORT:-3100}:3000"
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -67,7 +68,7 @@ services:
       - RUSTFS_SECRET_KEY=${S3_SECRET_ACCESS_KEY}
       - RUSTFS_CORS_ALLOWED_ORIGINS=${NEXT_PUBLIC_BASE_URL}
     ports:
-      - "127.0.0.1:${KAN_S3_PORT:-9100}:9000"
+      - "${KAN_BIND:-127.0.0.1}:${KAN_S3_PORT:-9100}:9000"
     volumes:
       - kan_s3_data:/data
     restart: unless-stopped
