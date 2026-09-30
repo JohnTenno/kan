@@ -1,0 +1,45 @@
+# Nginx para Kan (Ibero). Copiar a /etc/nginx/sites-available/kan, cambiar los
+# dos dominios, enlazar en sites-enabled y luego correr certbot (ver
+# deploy/DESPLIEGUE.md). Certbot agrega los bloques HTTPS automáticamente.
+
+# App
+server {
+    listen 80;
+    listen [::]:80;
+    server_name tablero.ejemplo.org;
+
+    client_max_body_size 50m;
+
+    location / {
+        proxy_pass http://127.0.0.1:3100;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+
+# Almacenamiento (imágenes y adjuntos)
+server {
+    listen 80;
+    listen [::]:80;
+    server_name archivos-tablero.ejemplo.org;
+
+    client_max_body_size 50m;
+    # Uploads go straight to storage; don't buffer them in Nginx.
+    proxy_request_buffering off;
+
+    location / {
+        proxy_pass http://127.0.0.1:9100;
+        proxy_http_version 1.1;
+        # The upload URLs are signed for this host name, so it must reach
+        # the storage server unchanged or the signature check fails.
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
