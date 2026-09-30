@@ -59,6 +59,7 @@ import { formatToArray, isPlaceholderPublicId } from "~/utils/helpers";
 import { DeleteCardConfirmation } from "~/views/card/components/DeleteCardConfirmation";
 import BoardDropdown from "./components/BoardDropdown";
 import CalendarView from "./components/CalendarView";
+import CardDialog from "./components/CardDialog";
 import { CardContextDueDateModal } from "./components/CardContextDueDateModal";
 import { CardContextDuplicateModal } from "./components/CardContextDuplicateModal";
 import { CardContextLabelsModal } from "./components/CardContextLabelsModal";
@@ -126,9 +127,24 @@ export default function BoardPage({ isTemplate }: { isTemplate?: boolean }) {
       ? params.boardId[0]
       : params.boardId
     : null;
-  const cardReturnQuery = router.asPath.includes("?")
-    ? `?returnUrl=${encodeURIComponent(router.asPath)}`
-    : "";
+  // Ibero: cards open in a dialog over the board (`?card=<id>`) instead of
+  // navigating to /cards/<id>, which still works as a standalone page.
+  const dialogCardId =
+    typeof router.query.card === "string" ? router.query.card : null;
+  const getCardHref = (cardPublicId: string) => {
+    const url = new URL(router.asPath, "http://localhost");
+    url.searchParams.set("card", cardPublicId);
+    return `${url.pathname}${url.search}`;
+  };
+  const closeCardDialog = useCallback(() => {
+    const url = new URL(router.asPath, "http://localhost");
+    url.searchParams.delete("card");
+    void router.push(`${url.pathname}${url.search}`, undefined, {
+      shallow: true,
+      scroll: false,
+    });
+    void utils.board.byId.invalidate();
+  }, [router, utils]);
 
   const createListShortcut = useMemo(
     () => ({
@@ -737,21 +753,21 @@ export default function BoardPage({ isTemplate }: { isTemplate?: boolean }) {
 
         <Modal
           modalSize="sm"
-          isVisible={isOpen && modalContentType === "NEW_WORKSPACE"}
+          isVisible={isOpen && !dialogCardId && modalContentType === "NEW_WORKSPACE"}
         >
           <NewWorkspaceForm />
         </Modal>
 
         <Modal
           modalSize="sm"
-          isVisible={isOpen && modalContentType === "NEW_LABEL"}
+          isVisible={isOpen && !dialogCardId && modalContentType === "NEW_LABEL"}
         >
           <LabelForm boardPublicId={boardId ?? ""} refetch={refetchBoard} />
         </Modal>
 
         <Modal
           modalSize="sm"
-          isVisible={isOpen && modalContentType === "EDIT_LABEL"}
+          isVisible={isOpen && !dialogCardId && modalContentType === "EDIT_LABEL"}
         >
           <LabelForm
             boardPublicId={boardId ?? ""}
@@ -762,7 +778,7 @@ export default function BoardPage({ isTemplate }: { isTemplate?: boolean }) {
 
         <Modal
           modalSize="sm"
-          isVisible={isOpen && modalContentType === "DELETE_LABEL"}
+          isVisible={isOpen && !dialogCardId && modalContentType === "DELETE_LABEL"}
         >
           <DeleteLabelConfirmation
             refetch={refetchBoard}
@@ -802,7 +818,7 @@ export default function BoardPage({ isTemplate }: { isTemplate?: boolean }) {
 
         <Modal
           modalSize="sm"
-          isVisible={isOpen && modalContentType === "EDIT_YOUTUBE"}
+          isVisible={isOpen && !dialogCardId && modalContentType === "EDIT_YOUTUBE"}
         >
           <EditYouTubeModal />
         </Modal>
@@ -842,7 +858,7 @@ export default function BoardPage({ isTemplate }: { isTemplate?: boolean }) {
         </Modal>
         <Modal
           modalSize="sm"
-          isVisible={isOpen && modalContentType === "DELETE_CARD"}
+          isVisible={isOpen && !dialogCardId && modalContentType === "DELETE_CARD"}
         >
           <DeleteCardConfirmation
             cardPublicId={entityId}
@@ -957,11 +973,9 @@ export default function BoardPage({ isTemplate }: { isTemplate?: boolean }) {
               lists={boardData.lists}
               cardPrefix={boardData.workspace.cardPrefix}
               weekStartsOn={workspace.weekStartDay}
-              isTemplate={!!isTemplate}
-              boardId={boardId ?? ""}
               canEditCard={canEditCard}
               canCreateCard={canCreateCard}
-              cardReturnQuery={cardReturnQuery}
+              getCardHref={getCardHref}
               isLocked={isFreeCloudPlan}
               upgradeUrl={upgradeUrl}
               onDateClick={openNewCardForDate}
@@ -1043,11 +1057,7 @@ export default function BoardPage({ isTemplate }: { isTemplate?: boolean }) {
                               cardPrefix={boardData.workspace.cardPrefix}
                               canEditCard={!!canEditCard}
                               freezeHeight={dragCardsByList !== null}
-                              getCardHref={(cardPublicId) =>
-                                isTemplate
-                                  ? `/templates/${boardId}/cards/${cardPublicId}${cardReturnQuery}`
-                                  : `/cards/${cardPublicId}${cardReturnQuery}`
-                              }
+                              getCardHref={getCardHref}
                               onContextMenu={(e, cardPublicId) => {
                                 setContextMenu({
                                   x: e.clientX,
@@ -1091,6 +1101,13 @@ export default function BoardPage({ isTemplate }: { isTemplate?: boolean }) {
           />
         )}
         {renderModalContent()}
+        {dialogCardId && (
+          <CardDialog
+            cardPublicId={dialogCardId}
+            isTemplate={!!isTemplate}
+            onClose={closeCardDialog}
+          />
+        )}
       </div>
     </>
   );
