@@ -973,8 +973,6 @@ export default function BoardPage({ isTemplate }: { isTemplate?: boolean }) {
               lists={boardData.lists}
               cardPrefix={boardData.workspace.cardPrefix}
               weekStartsOn={workspace.weekStartDay}
-              isTemplate={!!isTemplate}
-              boardId={boardId ?? ""}
               canEditCard={canEditCard}
               canCreateCard={canCreateCard}
               getCardHref={getCardHref}

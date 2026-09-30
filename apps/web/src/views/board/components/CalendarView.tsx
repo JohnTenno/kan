@@ -134,8 +134,6 @@ interface CalendarViewProps {
   lists: { cards: CalendarCard[] }[];
   cardPrefix: string;
   weekStartsOn: 0 | 1 | 6;
-  isTemplate: boolean;
-  boardId: string;
   canEditCard: boolean;
   canCreateCard: boolean;
   getCardHref: (cardPublicId: string) => string;
@@ -153,8 +151,6 @@ const CalendarView = ({
   lists,
   cardPrefix,
   weekStartsOn,
-  isTemplate,
-  boardId,
   canEditCard,
   canCreateCard,
   getCardHref,
