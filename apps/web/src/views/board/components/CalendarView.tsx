@@ -138,7 +138,7 @@ interface CalendarViewProps {
   boardId: string;
   canEditCard: boolean;
   canCreateCard: boolean;
-  cardReturnQuery: string;
+  getCardHref: (cardPublicId: string) => string;
   isLocked: boolean;
   upgradeUrl: string;
   onDateClick: (date: Date) => void;
@@ -157,7 +157,7 @@ const CalendarView = ({
   boardId,
   canEditCard,
   canCreateCard,
-  cardReturnQuery,
+  getCardHref,
   isLocked,
   upgradeUrl,
   onDateClick,
@@ -169,10 +169,7 @@ const CalendarView = ({
   );
   const [selectedDate, setSelectedDate] = useState(() => new Date());
 
-  const cardHref = (cardPublicId: string) =>
-    isTemplate
-      ? `/templates/${boardId}/cards/${cardPublicId}${cardReturnQuery}`
-      : `/cards/${cardPublicId}${cardReturnQuery}`;
+  const cardHref = getCardHref;
 
   const ticketNumber = (card: CalendarCard) =>
     card.cardNumber != null ? `${cardPrefix}-${card.cardNumber}` : null;

@@ -47,13 +47,23 @@ interface FormValues {
   description: string;
 }
 
-export function CardRightPanel({ isTemplate }: { isTemplate?: boolean }) {
+interface CardViewProps {
+  isTemplate?: boolean;
+  /** Card to show; defaults to the `cardId` route param. */
+  cardPublicId?: string;
+  /** When set, the card is shown in a dialog and this closes it. */
+  onClose?: () => void;
+}
+
+export function CardRightPanel({ isTemplate, cardPublicId }: CardViewProps) {
   const router = useRouter();
   const { canEditCard } = usePermissions();
   const { data: session } = authClient.useSession();
-  const cardId = Array.isArray(router.query.cardId)
-    ? router.query.cardId[0]
-    : router.query.cardId;
+  const cardId =
+    cardPublicId ??
+    (Array.isArray(router.query.cardId)
+      ? router.query.cardId[0]
+      : router.query.cardId);
 
   const { data: card } = api.card.byId.useQuery(
     { cardPublicId: cardId ?? "" },
@@ -163,7 +173,11 @@ export function CardRightPanel({ isTemplate }: { isTemplate?: boolean }) {
   );
 }
 
-export default function CardPage({ isTemplate }: { isTemplate?: boolean }) {
+export default function CardPage({
+  isTemplate,
+  cardPublicId,
+  onClose,
+}: CardViewProps) {
   const router = useRouter();
   const utils = api.useUtils();
   const {
@@ -182,9 +196,11 @@ export default function CardPage({ isTemplate }: { isTemplate?: boolean }) {
     null,
   );
 
-  const cardId = Array.isArray(router.query.cardId)
-    ? router.query.cardId[0]
-    : router.query.cardId;
+  const cardId =
+    cardPublicId ??
+    (Array.isArray(router.query.cardId)
+      ? router.query.cardId[0]
+      : router.query.cardId);
 
   const {
     data: card,
@@ -199,10 +215,11 @@ export default function CardPage({ isTemplate }: { isTemplate?: boolean }) {
   useEffect(() => {
     if (router.isReady && cardId && !isLoading) {
       if (error?.data?.code === "NOT_FOUND" || (!card && !isLoading)) {
-        router.replace("/404");
+        if (onClose) onClose();
+        else router.replace("/404");
       }
     }
-  }, [router, cardId, isLoading, error, card]);
+  }, [router, cardId, isLoading, error, card, onClose]);
 
   const isCreator = card?.createdBy && session?.user.id === card.createdBy;
   const canEdit = canEditCard || isCreator;
@@ -343,12 +360,22 @@ export default function CardPage({ isTemplate }: { isTemplate?: boolean }) {
                   {workspace.name}
                 </Link>
                 <IoChevronForwardSharp className="h-[10px] w-[10px] text-light-900 dark:text-dark-900" />
-                <Link
-                  className="whitespace-nowrap text-sm font-bold leading-[1.5rem] text-light-900 dark:text-dark-950"
-                  href={boardReturnUrl}
-                >
-                  {board?.name}
-                </Link>
+                {onClose ? (
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="whitespace-nowrap text-sm font-bold leading-[1.5rem] text-light-900 dark:text-dark-950"
+                  >
+                    {board?.name}
+                  </button>
+                ) : (
+                  <Link
+                    className="whitespace-nowrap text-sm font-bold leading-[1.5rem] text-light-900 dark:text-dark-950"
+                    href={boardReturnUrl}
+                  >
+                    {board?.name}
+                  </Link>
+                )}
                 {card.cardNumber != null &&
                   card.list.board.workspace.cardPrefix && (
                     <>
@@ -374,13 +401,24 @@ export default function CardPage({ isTemplate }: { isTemplate?: boolean }) {
                   listPublicId={card?.list.publicId}
                   cardIndex={card?.index}
                 />
-                <Link
-                  href={boardReturnUrl}
-                  className="flex h-7 w-7 items-center justify-center rounded-[5px] text-light-900 hover:bg-light-200 dark:text-dark-900 dark:hover:bg-dark-200"
-                  aria-label={t`Close`}
-                >
-                  <HiXMark className="h-4 w-4" />
-                </Link>
+                {onClose ? (
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="flex h-7 w-7 items-center justify-center rounded-[5px] text-light-900 hover:bg-light-200 dark:text-dark-900 dark:hover:bg-dark-200"
+                    aria-label={t`Close`}
+                  >
+                    <HiXMark className="h-4 w-4" />
+                  </button>
+                ) : (
+                  <Link
+                    href={boardReturnUrl}
+                    className="flex h-7 w-7 items-center justify-center rounded-[5px] text-light-900 hover:bg-light-200 dark:text-dark-900 dark:hover:bg-dark-200"
+                    aria-label={t`Close`}
+                  >
+                    <HiXMark className="h-4 w-4" />
+                  </Link>
+                )}
               </div>
             </>
           )}
