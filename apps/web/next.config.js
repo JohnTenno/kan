@@ -45,6 +45,10 @@ const config = {
   eslint: { ignoreDuringBuilds: true },
 
   images: {
+    // Ibero: the browser loads images straight from storage. The optimizer
+    // (/_next/image) would fetch them from inside the server, where the public
+    // storage address is unreachable, and it rejects plain-http hosts.
+    unoptimized: true,
     remotePatterns: (() => {
       /** @type {Array<{protocol: "http" | "https", hostname: string}>} */
       const patterns = [
