@@ -7791,5 +7791,12 @@
     "comments": [],
     "origin": [["src/components/YouTubeEmbed/EditYouTubeModal.tsx", 147]],
     "translation": "URL YouTube"
+  },
+  "joolK7": {
+    "message": "Source code",
+    "placeholders": {},
+    "comments": [],
+    "origin": [["src/components/UserMenu.tsx", 221]],
+    "translation": "Code source"
   }
 }

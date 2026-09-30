@@ -13014,5 +13014,12 @@
       ]
     ],
     "translation": "YouTube-URL"
+  },
+  "joolK7": {
+    "message": "Source code",
+    "placeholders": {},
+    "comments": [],
+    "origin": [["src/components/UserMenu.tsx", 221]],
+    "translation": "Kildekode"
   }
 }

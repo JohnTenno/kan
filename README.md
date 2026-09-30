@@ -19,6 +19,25 @@
   <a href="https://github.com/kanbn/kan/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/badge/license-AGPLv3-purple"></a>
 </div>
 
+## Versión modificada (fork) 🔀
+
+Este repositorio es un **fork modificado** de [Kan](https://github.com/kanbn/kan)
+(© sus autores), adaptado para uso interno en la Universidad Iberoamericana.
+No es un producto oficial de Kan ni está respaldado por sus autores.
+
+Se distribuye bajo la misma licencia que el original, [GNU AGPLv3](LICENSE).
+Conforme a la sección 13 de la AGPLv3, el código fuente completo de esta versión
+está disponible aquí, y la aplicación enlaza a este repositorio desde el menú de
+usuario ("Código fuente"). El código desplegado debe corresponder siempre a lo que
+está publicado en este repositorio.
+
+**Cambios respecto al original** (el detalle está en el historial de git):
+
+| Fecha | Cambio |
+| --- | --- |
+| 2026-09-29 | Las tarjetas se abren en un diálogo sobre el tablero en lugar de una página aparte. |
+| 2026-09-29 | Enlace "Código fuente" en el menú de usuario y esta nota de versión modificada. |
+
 ## Features 💫
 
 - 👁️ **Board Visibility**: Control who can view and edit your boards

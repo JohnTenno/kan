@@ -14,6 +14,7 @@ import { useIsMobile } from "~/hooks/useMediaQuery";
 import { useKeyboardShortcuts } from "~/providers/keyboard-shortcuts";
 import { useModal } from "~/providers/modal";
 import { getAvatarUrl } from "~/utils/helpers";
+import { SOURCE_CODE_URL } from "~/utils/source-code";
 
 interface UserMenuProps {
   imageUrl: string | undefined;
@@ -207,6 +208,18 @@ export default function UserMenu({
                   className="flex w-full items-center rounded-[5px] px-3 py-2 text-left text-xs hover:bg-light-200 dark:hover:bg-dark-400"
                 >
                   {t`Documentation`}
+                </Link>
+              </Menu.Item>
+              <Menu.Item>
+                {/* AGPLv3 §13: users of this modified version get its source. */}
+                <Link
+                  href={SOURCE_CODE_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={handleLinkClick}
+                  className="flex w-full items-center rounded-[5px] px-3 py-2 text-left text-xs hover:bg-light-200 dark:hover:bg-dark-400"
+                >
+                  {t`Source code`}
                 </Link>
               </Menu.Item>
               <Menu.Item>
