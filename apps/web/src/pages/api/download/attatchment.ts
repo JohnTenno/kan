@@ -1,9 +1,52 @@
+import http from "node:http";
+import https from "node:https";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withApiLogging } from "@kan/api/utils/apiLogging";
 import { withRateLimit } from "@kan/api/utils/rateLimit";
 
 import { env } from "~/env";
+
+/**
+ * GETs a presigned storage URL. With S3_INTERNAL_ENDPOINT set, the request
+ * goes to that address instead of the public one (which may be unreachable
+ * from inside the server) but keeps the public Host header, because the URL's
+ * signature covers it and storage still checks it.
+ */
+function getPresigned(url: URL, internalEndpoint: string | undefined) {
+  const target = internalEndpoint ? new URL(internalEndpoint) : url;
+  const client = target.protocol === "https:" ? https : http;
+  return new Promise<{ status: number; contentType?: string; body: Buffer }>(
+    (resolve, reject) => {
+      const request = client.request(
+        {
+          protocol: target.protocol,
+          hostname: target.hostname,
+          port: target.port || undefined,
+          path: `${url.pathname}${url.search}`,
+          method: "GET",
+          headers: { host: url.host },
+          timeout: 30_000,
+        },
+        (response) => {
+          const chunks: Buffer[] = [];
+          response.on("data", (chunk: Buffer) => chunks.push(chunk));
+          response.on("end", () =>
+            resolve({
+              status: response.statusCode ?? 502,
+              contentType: response.headers["content-type"],
+              body: Buffer.concat(chunks),
+            }),
+          );
+          response.on("error", reject);
+        },
+      );
+      request.on("timeout", () => request.destroy(new Error("timeout")));
+      request.on("error", reject);
+      request.end();
+    },
+  );
+}
 
 export default withRateLimit(
   { points: 100, duration: 60 },
@@ -18,16 +61,16 @@ export default withRateLimit(
       return res.status(400).json({ message: "url parameter is required" });
     }
 
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      return res.status(400).json({ message: "Invalid URL" });
+    }
+
     const s3Endpoint = env.S3_ENDPOINT;
 
     if (s3Endpoint) {
-      let parsed: URL;
-      try {
-        parsed = new URL(url);
-      } catch {
-        return res.status(400).json({ message: "Invalid URL" });
-      }
-
       const hostname = parsed.hostname.toLowerCase();
       let allowedHost: string;
       try {
@@ -49,16 +92,15 @@ export default withRateLimit(
           ? encodeURIComponent(filename)
           : "attachment";
 
-      const upstream = await fetch(url);
+      const upstream = await getPresigned(parsed, env.S3_INTERNAL_ENDPOINT);
 
-      if (!upstream.ok) {
+      if (upstream.status < 200 || upstream.status >= 300) {
         return res
           .status(upstream.status)
           .json({ message: "Failed to fetch attachment" });
       }
 
-      const contentType =
-        upstream.headers.get("Content-Type") ?? "application/octet-stream";
+      const contentType = upstream.contentType ?? "application/octet-stream";
 
       res.setHeader("Content-Type", contentType);
       res.setHeader(
@@ -66,8 +108,7 @@ export default withRateLimit(
         `attachment; filename="${downloadFilename}"; filename*=UTF-8''${downloadFilename}`,
       );
 
-      const buffer = await upstream.arrayBuffer();
-      return res.send(Buffer.from(buffer));
+      return res.send(upstream.body);
     } catch (error) {
       return res.status(500).json({ message: "Failed to download attachment" });
     }

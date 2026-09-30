@@ -7,7 +7,15 @@ import {
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { env } from "next-runtime-env";
 
-export function createS3Client() {
+/**
+ * `S3_INTERNAL_ENDPOINT` (optional) is how this server reaches storage, e.g.
+ * the Docker service name, for when the public `S3_ENDPOINT` is not reachable
+ * from inside the server. Presigned URLs are opened by the browser, so they
+ * are always signed for the public endpoint (`forPresignedUrl`).
+ */
+export function createS3Client({
+  forPresignedUrl = false,
+}: { forPresignedUrl?: boolean } = {}) {
   const region =
     process.env.S3_REGION === "" ? undefined : process.env.S3_REGION;
   const credentials =
@@ -18,6 +26,11 @@ export function createS3Client() {
         }
       : undefined;
 
+  const internalEndpoint =
+    forPresignedUrl || process.env.S3_INTERNAL_ENDPOINT === ""
+      ? undefined
+      : process.env.S3_INTERNAL_ENDPOINT;
+
   // The AWS SDK throws "Region is missing" if region is undefined or
   // empty string at S3Client construction. Default to "us-east-1" so
   // S3-compatible providers (MinIO, Backblaze B2, R2, Spaces, Wasabi)
@@ -26,7 +39,7 @@ export function createS3Client() {
   // S3_REGION explicitly to their bucket's actual region.
   return new S3Client({
     region: region ?? "us-east-1",
-    endpoint: process.env.S3_ENDPOINT ?? "",
+    endpoint: internalEndpoint ?? process.env.S3_ENDPOINT ?? "",
     forcePathStyle: process.env.S3_FORCE_PATH_STYLE === "true",
     credentials,
   });
@@ -38,7 +51,7 @@ export async function generateUploadUrl(
   contentType: string,
   expiresIn = 3600,
 ) {
-  const client = createS3Client();
+  const client = createS3Client({ forPresignedUrl: true });
   return getSignedUrl(
     client,
     new PutObjectCommand({
@@ -56,7 +69,7 @@ export async function generateDownloadUrl(
   key: string,
   expiresIn = 3600,
 ) {
-  const client = createS3Client();
+  const client = createS3Client({ forPresignedUrl: true });
   return getSignedUrl(
     client,
     new GetObjectCommand({

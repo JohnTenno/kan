@@ -37,6 +37,9 @@ services:
       - .env
     environment:
       - POSTGRES_URL=postgresql://kan:${POSTGRES_PASSWORD}@postgres:5432/kan_db
+      # The server talks to storage inside Docker; the public S3_ENDPOINT is
+      # only for the browser (it may not be reachable from inside the server).
+      - S3_INTERNAL_ENDPOINT=http://s3:9000
     ports:
       - "${KAN_BIND:-127.0.0.1}:${KAN_WEB_PORT:-3100}:3000"
     depends_on:
