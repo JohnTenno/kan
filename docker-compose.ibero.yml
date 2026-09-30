@@ -1,0 +1,94 @@
+# Producción (Ibero): Kan construido desde ESTE fork + Postgres + RustFS (S3).
+#
+# Todo escucha solo en 127.0.0.1; el Nginx del servidor publica los dominios
+# con HTTPS (ver deploy/nginx/kan.conf.example). Uso:
+#
+#   cp .env.production.example .env   # y llenar los valores
+#   docker compose -f docker-compose.ibero.yml up -d --build
+#
+# Guía completa: deploy/DESPLIEGUE.md
+
+name: kan-ibero
+
+services:
+  migrate:
+    image: kan-ibero-migrate:local
+    pull_policy: never
+    build:
+      context: .
+      dockerfile: ./apps/web/Dockerfile
+      target: migrate
+    environment:
+      - POSTGRES_URL=postgresql://kan:${POSTGRES_PASSWORD}@postgres:5432/kan_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  web:
+    image: kan-ibero-web:local
+    pull_policy: never
+    build:
+      context: .
+      dockerfile: ./apps/web/Dockerfile
+      target: web
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_URL=postgresql://kan:${POSTGRES_PASSWORD}@postgres:5432/kan_db
+    ports:
+      - "127.0.0.1:${KAN_WEB_PORT:-3100}:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=kan_db
+      - POSTGRES_USER=kan
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    # Sin "ports": la base de datos no se expone fuera de Docker.
+    volumes:
+      - kan_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kan -d kan_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # Almacenamiento de imágenes y adjuntos, compatible con S3 (Apache 2.0).
+  s3:
+    image: rustfs/rustfs:latest
+    environment:
+      - RUSTFS_ACCESS_KEY=${S3_ACCESS_KEY_ID}
+      - RUSTFS_SECRET_KEY=${S3_SECRET_ACCESS_KEY}
+      - RUSTFS_CORS_ALLOWED_ORIGINS=${NEXT_PUBLIC_BASE_URL}
+    ports:
+      - "127.0.0.1:${KAN_S3_PORT:-9100}:9000"
+    volumes:
+      - kan_s3_data:/data
+    restart: unless-stopped
+
+  # Crea los buckets (avatares públicos, adjuntos privados) y termina.
+  s3-init:
+    image: node:20-alpine
+    working_dir: /init
+    command: sh -c "npm install --silent --no-save @aws-sdk/client-s3@3 && node s3-init.mjs"
+    environment:
+      - S3_INTERNAL_ENDPOINT=http://s3:9000
+      - S3_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID}
+      - S3_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY}
+      - AVATAR_BUCKET=${NEXT_PUBLIC_AVATAR_BUCKET_NAME:-kan-avatars}
+      - ATTACHMENTS_BUCKET=${NEXT_PUBLIC_ATTACHMENTS_BUCKET_NAME:-kan-attachments}
+    volumes:
+      - ./deploy/s3-init.mjs:/init/s3-init.mjs:ro
+    depends_on:
+      - s3
+    restart: "no"
+
+volumes:
+  kan_postgres_data:
+  kan_s3_data:
